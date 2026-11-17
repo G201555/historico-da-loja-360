@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Registro de "quem já reivindicou qual identidade" (instrutor/representante).
+    // Só permite CRIAR um documento novo (não existir ainda) — depois de criado,
+    // só o dono (mesmo uid) pode alterar/remover. Isso impede que uma segunda
+    // conta escolha o nome de outra pessoa já cadastrada.
+    match /identidades/{nomeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && !exists(/databases/$(database)/documents/identidades/$(nomeId));
+      allow update, delete: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
+    }
+    // Tudo mais fica bloqueado por padrão.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
